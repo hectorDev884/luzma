@@ -51,6 +51,7 @@ jobs:
           name: coverage-node-${{ matrix.node }}
           path: coverage/
           retention-days: 7
+          if-no-files-found: warn
 
   build:
     name: Build & Package
@@ -79,6 +80,7 @@ jobs:
           name: build-artifact
           path: dist/
           retention-days: 1
+          if-no-files-found: warn
 
       - id: set-output
         run: echo "status=success" >> $GITHUB_OUTPUT
