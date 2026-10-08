@@ -1,0 +1,78 @@
+name: Reusable CI Workflow
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: 'Node.js version to use'
+        required: false
+        type: string
+        default: '["18", "20", "22"]'
+      run-lint:
+        description: 'Whether to run linting'
+        required: false
+        default: true
+        type: boolean
+      # run-tests:
+      #   description: 'Whether to run tests'
+      #   required: false
+      #   default: true
+      #   type: boolean
+      outputs:
+        build-status:
+          description: 'The build status'
+          value: ${{ jobs.build.outputs.status }}
+        jobs:
+          test-matrix:
+            name: Test Node.js v${{matrix.node}}
+            runs-on: ubuntu-latest
+            strategy:
+              fail-fast: false
+            matrix:
+              node: ${{ fromJSON(inputs.node-version) }}
+            steps:
+              - name: Checkout code
+                uses: actions/checkout@v4
+              - name: Set up Node.js v${{matrix.node}}
+                uses: actions/setup-node@v4
+                with:
+                  node-version: ${{matrix.node}}
+                  cache: 'npm'
+                - name: Instalacion limpia de dependencias
+                  run: npm ci
+                - name: Ejecutar lintar
+                  if: ${{inputs.run-lint}}
+                run: npm run lint
+                  - name: Ejecutar pruebas unitarias e integracion
+                  run: npm test -- --coverage
+
+                  - name: Upload coverage report
+                    uses: actions/upload-artifact@v4
+                    with:
+                      name: coverage-node-${{matrix.node}}
+                      path: coverage/
+                      retention-days: 7
+                build:
+                  name: Build & Package
+                  needs: test-matrix
+                  runs-on: ubuntu-latest
+                  outputs:
+                    status: ${{ job.status }}
+                  steps:
+                    - name: Checkout code
+                      uses: actions/checkout@v4
+                    - name: Configurar Node.js
+                      uses actions/setup-node@v4
+                      with:
+                        node-version: '20'
+                        cache: 'npm'
+                    - name: Instalacion limpia de dependencias
+                      run: npm ci
+                      npm run build
+                    - name: Guardar Artifact de produccion
+                      uses: actions/upload-artifact@v4
+                      with:
+                        name: production-artifact
+                        path: dist/
+                        retention-days: 1
+                    - id: set-output
+                      run: echo "status=${{ job.status }}" >> $GITHUB_OUTPUT
